@@ -1,0 +1,15 @@
+# `make zip` 的构建产物。
+build/
+
+# `make compile` 的构建产物（glib-compile-schemas 会读它旁边的 .gschema.xml）。
+# 刻意不进 git：二进制、几秒就能重生成，而需要它的入口——compile / check / zip /
+# install——全部依赖这条规则，所以干净克隆什么都不缺。
+# 见 docs/GUIDE.md「开发 · 构建命令与依赖」。
+schemas/gschemas.compiled
+
+# 编辑器 / 系统残留。
+*.swp
+*~
+.DS_Store
+
+.idea/

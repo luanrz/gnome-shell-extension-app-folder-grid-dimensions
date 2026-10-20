@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.app-folder-grid-dimensions"
+          path="/org/gnome/shell/extensions/app-folder-grid-dimensions/">
+
+    <!--
+      刻意只留行列数两个设置：弹窗尺寸、图标格子、贴图分辨率都由 extension.js 从
+      这两个数推导（_dialogSize / ownedCellSize / _pinTextureFor），「各文件夹一样大」
+      正是这样保证的。机制见 docs/GUIDE.md「机制」。
+      summary/description 是给界面用的英文文案，不译（docs/GUIDE.md「开发 · 改 prefs.js」的界面文案）。
+    -->
+
+    <key name="rows" type="i">
+      <default>4</default>
+      <summary>Rows per page in an app folder popup</summary>
+      <description>
+        Upstream GNOME hardcodes this value to 3, which is also the lower bound here.
+        Rows times columns is the capacity of one page; the popup height follows from
+        it the same way and is likewise capped by the screen.
+      </description>
+      <range min="3" max="12"/>
+    </key>
+
+    <key name="columns" type="i">
+      <default>6</default>
+      <summary>Columns per page in an app folder popup</summary>
+      <description>
+        Upstream GNOME hardcodes this value to 3, which is also the lower bound here.
+        The extension re-splits the pages of every folder after a change, because
+        GNOME itself only paginates while icons are added or removed - changing the
+        column count alone would not reflow anything. The popup width follows from
+        this value (columns times the 147px cell, plus spacings and margin) and is
+        capped by the screen: when a full row does not fit, every folder's cell
+        shrinks together instead of drawing columns outside the popup.
+      </description>
+      <range min="3" max="12"/>
+    </key>
+
+  </schema>
+</schemalist>

@@ -1,0 +1,10 @@
+{
+  "uuid": "app-folder-grid-dimensions@luanrz",
+  "name": "App Folder Grid Dimensions",
+  "description": "Customize the number of rows and columns in the GNOME app folder grid.",
+  "shell-version": [
+    "51"
+  ],
+  "url": "https://github.com/luanrz/gnome-shell-extension-app-folder-grid-dimensions",
+  "settings-schema": "org.gnome.shell.extensions.app-folder-grid-dimensions"
+}
