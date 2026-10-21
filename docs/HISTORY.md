@@ -828,3 +828,54 @@ step 仍是代码里的 `STEP = 1`（schema 没有步长这个概念）。
 - 界面文案仍是五条（窗口标题、分组标题、分组描述、两个行标签），之前那次收敛没被这轮加回去。
 - README 的设置表两行是「Rows（行数）」在上、「Columns（列数）」在下，「窗口里显示英文 `Rows` / `Columns`」
   那句括注同序；正文里行一律写在列前面，包括「行数 × 列数 就是一页的容量」这句。
+
+
+## 18. 首次安装后启用：启用前已存在的弹窗把共享格子拖低
+
+### 18.1 现象与触发条件
+
+首次安装后注销重登（此时扩展还没启用），在【扩展】应用里点启用，所有应用文件夹的图标都小一号；
+再注销重登一次就正常。差别不在登录次数，而在**启用那一刻是否已经有一个按上游 3×3 建好的弹窗**。
+
+真实桌面上这条路径几乎是必然的：`org.gnome.Extensions.desktop` 在 `GNOME-Extra` 文件夹的
+`apps` 列表里，打开扩展应用之前先展开了该文件夹；那一刻 `AppFolderDialog` 按主题的 720×720
+建好，popdown 之后并不销毁。扩展启用时 `_adoptExistingViews()` 只收 `folderIcon.view._grid`，
+没有收 `folderIcon._dialog`，于是旧弹窗既不改尺寸、也不登记，弹窗打开过的那一页一直按
+720 宽参与共享 cell 的取最小。
+
+隔离会话复现（1280×1024、4×6、微软雅黑 10）：启用前打开 Test A，`viewBox=722x720`、
+`page=720x649`；启用后 A 的行列变成 4×6，但弹窗仍是 722×720，`pageFitSize = min(153, 110) = 110`，
+共享 cell 被拉到 110，图标 96→63。新建的 B 弹窗尺寸是对的（`viewBox=992x739`），但它的图标
+同样 63——共享 cell 取所有 owned 网格的最小值，一个旧弹窗拖低所有文件夹。对照组：不预先打开
+文件夹、运行时启用，以及扩展随会话启动加载，都是 147/96。
+
+### 18.2 只收弹窗不够：收起的弹窗不会重新分配
+
+第一版改动只把 `folderIcon._dialog` 也 `Patches.track()` 进 `SHARED.dialogs`，让 `_reapply()`
+对它调用 `_applyToDialog()`。复测发现启用后立刻读到的 A 仍是 `view=720x649`、`cell=110`：
+`set_style()` 把 `_viewBox` 的内联尺寸改成了 992×739，但 `St` 不会给隐藏的 actor 重新分配，
+页面要等到弹窗下一次 `popup()` 才按新尺寸 `adaptToSize()`。把 A 打开一次确实能恢复
+（`view=990x668`、cell 147、图标 96），但别的文件夹在 A 被打开之前一直停在 110——不够。
+
+### 18.3 最终改法：接管时把陈旧页尺寸清零
+
+`_adoptExistingViews()` 在登记弹窗时，若它当前 `!visible`，就把对应网格的
+`_pageWidth`/`_pageHeight` 置 0。这不等同于「永久忽略某个页面」，而是把它退回新网格的
+「还没量过」状态：`pageFitSize()` 返回 null、不参与取最小，之后真正分配时
+`FolderGrid.vfunc_allocate()` 会重新 `adaptToSize()`。因为清零发生在 `_applyToGrid()` 之前，
+共享 cell 从一开始就是解析值 147，不会再先钉成 63 再等 idle 纠正。
+
+复测三组：
+
+- `preopen`：启用前开 A、关掉、启用 → 立刻 `cell=147 iconSize=96`，A 的 `page=0x0`；
+  打开 B 与 A 均为 `view=990x668`、`page=990x668`、147/96，A 的 `viewBox=992x739`。
+- `preopen-cycle`：preopen → enable → disable → enable，A 始终没在新启用后打开过，仍然
+  147/96；最后一次 disable 后打开 A，恢复上游 720×649、3×3、图标 96、内联样式为空，
+  说明清零过的页在还原路径上也能正常分配。
+- `preopen-disable`：清零后直接 disable、不再 enable，打开 A 同样恢复 720×649、3×3、
+  图标 96，没有触发 `IconGridLayout.adaptToSize() wasn't called`。
+- `baseline` / `runtime` / `race`：147/96 不变，无 `JS ERROR`；真实
+  `org.gnome.shell enabled-extensions` 前后逐字一致。
+
+这条也解释了为什么隔离会话过去没测到：会话里所有弹窗都是 enable 之后由补丁后的 `_init`
+新建的，而真实桌面上只要先打开过一次文件夹，弹窗就早于扩展存在。能被隔离会话复现的才算测过。

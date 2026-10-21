@@ -44,7 +44,8 @@
 
 1. 给每个应用文件夹网格钉上一行 `{rows, columns}` 模式，并把弹窗尺寸写成内联样式。内联样式压得过
    主题的 720×720；还原时置空字符串，控制权就交回主题。样式落在 `_viewBox` 上——就是挂
-   `.app-folder-dialog` 样式类的那个 actor。
+   `.app-folder-dialog` 样式类的那个 actor。扩展启用前已经打开过的弹窗也要接管：它按上游
+   720×720 建好，popdown 后不销毁，漏掉它就会以旧页宽拖低共享格子。
 2. 把所有文件夹的格子边长钉成同一个共享值。
 3. 改完行列数后，把分页重切一遍。
 
@@ -121,7 +122,9 @@ Shell.SquareBin` 且 `setSizeManually: true`，`setIconSize()` 只决定加载�
 有没有被分配过、有没有被别的扩展改写过，真实桌面上各文件夹会不一致。而隔离会话里所有网格都是
 同一步新建的，永远测不出这个分叉——这是本仓库第一次「实测与真实桌面不一致」，教训见
 「开发 · 隔离嵌套会话」。实测值仍留在 `min` 里当保险：实际页宽真的比要求的窄时，把所有人一起降，
-不各降各的。配套的重钉也是全局的——`SHARED.cell` 记共享值，变化时 `_repinAllTextures()` 扫所有
+不各降各的。但**收起的弹窗不算实测**：它的页尺寸停在最后一次打开时，内联尺寸改了也不会重新分配；
+这份测量会在弹窗下一次弹出时被 `adaptToSize()` 覆盖，所以接管时直接清零，让它以「还没量过」
+参与取最小。配套的重钉也是全局的——`SHARED.cell` 记共享值，变化时 `_repinAllTextures()` 扫所有
 owned 布局器统一重贴。补丁注册、实例标记与共享状态的分层见「开发 · 改 extension.js」。
 
 ### 机制 · 重分页
@@ -165,8 +168,9 @@ idle）与写贴图的两条途径，都是改代码才需要的实现，见「�
 别处只留指针。
 
 - **依赖 shell 的私有成员**：`FolderView._grid`、`AppFolderDialog._viewBox`、
-  `IconGridLayout._getChildrenMaxSize`、`_folderIcons`、`_childrenMaxSize`、`_currentMode`、
-  `_pages`、`_relocateSurplusItems`、`_fillItemVacancies`、`_currentPage`、`item.icon.label` 等，
+  `IconGridLayout._getChildrenMaxSize`、`_folderIcons`、`_dialog`、`_childrenMaxSize`、
+  `_currentMode`、`_pageWidth`、`_pageHeight`、`_pages`、`_relocateSurplusItems`、
+  `_fillItemVacancies`、`_currentPage`、`item.icon.label` 等，
   任何一次 shell 更新中都可能变动。所以一旦出现「加载不上」或「改了列数没反应」，先按「私有接口
   挪了位置」来排查——对照当前 shell 的 `appDisplay.js` 与 `iconGrid.js` 重新核对这些成员——
   而不是先怀疑设置。排查步骤见「常见问题」。
@@ -379,7 +383,11 @@ text` 与 `CRITICAL`；隔离 profile 里 `.config/dconf` 非空，是有写入�
   `Main.overview._overview.controls.appDisplay._folderIcons[].view._grid`，不能遍历 `uiGroup`
   的 actor 树：AppDisplay 在**首次打开概览之前**不挂在 actor 树上，遍历结果是 0 个，启动期就
   建好的 FolderView 会全部停留在上游 3×3。`_reapply()` 里先同步再接管，避免设置变动时漏掉
-  晚出现的视图。
+  晚出现的视图。同一个循环还要收 `_folderIcons[]._dialog`：启用前打开过的弹窗不会走补丁后的
+  `_init`，只收网格就会漏掉它的 720×720 内联尺寸。收起的弹窗不会重新分配，旧的页宽会一直参与
+  共享 cell 的取最小，所以每次接管扫描只要弹窗当前不可见，就把 `_pageWidth`/`_pageHeight`
+  清零——等同新网格的「还没量过」，下次弹出时 `FolderGrid.vfunc_allocate()` 会重新
+  `adaptToSize()`。
 - 收集与只登记要分开：`_adoptExistingViews()` 只做登记（`Patches.track()` 入集合、挂 `destroy`
   出表），apply 交回 `_reapply()` 后面的循环——否则新接管的文件夹会被重复触发 `_repackPages()`。
   这个重复曾在每次改设置时把每个弹窗 `set_style()` 两遍、重分页跑两遍，净减两行才行为等价。

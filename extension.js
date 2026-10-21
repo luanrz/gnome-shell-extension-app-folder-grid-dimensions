@@ -450,7 +450,12 @@ export default class AppFolderGridDimensionsExtension extends Extension {
     }
 
     /* 接管已经存在的文件夹视图：AppDisplay 可能早于扩展启用而建立，且在首次打开
-     * 概览之前不挂在 actor 树上——所以走它自己的 _folderIcons 列表。
+     * 概览之前不挂在 actor 树上——所以走它自己的 _folderIcons 列表。网格和弹窗
+     * 都要收：启用前打开过的文件夹，其弹窗已按上游 720×720 建好且 popdown 后
+     * 不销毁，不收进来就会以旧页宽把所有文件夹的共享格子一起拉低。
+     * 收起来的弹窗不会重新分配，页尺寸还是打开时那一版；把它清零，等同「还没
+     * 量过」，下次弹出时 FolderGrid.vfunc_allocate() 会重新 adaptToSize()——
+     * 否则这份陈旧测量仍会通过共享 min 拖低所有文件夹。
      * 只收集——_reapply() 紧接着统一应用；在这里应用会让新建文件夹的
      * _repackPages() 白跑两遍。
      * 见 docs/GUIDE.md「开发 · 改 extension.js」。 */
@@ -459,9 +464,22 @@ export default class AppFolderGridDimensionsExtension extends Extension {
 
         for (const folderIcon of appDisplay?._folderIcons ?? []) {
             const grid = folderIcon?.view?._grid;
+            const dialog = folderIcon?._dialog;
 
             if (grid)
                 Patches.track(SHARED.grids, grid);
+
+            if (!dialog)
+                continue;
+
+            Patches.track(SHARED.dialogs, dialog);
+
+            if (!dialog.visible && grid) {
+                const layoutManager = grid.layout_manager;
+
+                layoutManager._pageWidth = 0;
+                layoutManager._pageHeight = 0;
+            }
         }
     }
 
