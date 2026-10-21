@@ -4,8 +4,9 @@
 细节全部在 `docs/GUIDE.md`——**当前事实与全部开发规程以 README.md 和它为准**，
 本文件与它们冲突时以它们为准。
 
-GNOME Shell 扩展：把应用文件夹网格每页的行数、列数开放为设置项（默认 4×6 = 一页 24 个图标），
-并让所有文件夹共用同一个格子边长。只作用于 App Folder Grid，不影响启动器的 App Grid。
+GNOME Shell 扩展：把应用文件夹弹窗里的网格每页的行数、列数开放为设置项（默认 4×6 = 一页
+24 个图标），并让所有文件夹共用同一个格子边长。只作用于应用文件夹网格（App Folder Grid），
+不影响启动器网格（App Grid）。
 
 ## 文档路由
 
@@ -41,9 +42,10 @@ GUIDE 按读者的问题组织，四个部分：机制（推导链与全部边�
    方法是 `add_suffix()` 而非 `add_end()`。都在「开发 · 改 prefs.js」。
 6. **`<range>` 是读时强制**，越界值留在 dconf 里不改写、读回默认值——不要「顺手修正」用户的 dconf。
 7. **语言与引用规矩**：界面/schema/代码里的字符串是英文，仓库文档与注释（含 schema XML 注释、
-   `.gitignore`）是中文；注释的「为什么」引用 `docs/GUIDE.md「小节名」` 且照抄完整标题、事实以
-   GUIDE 已有描述为准；GUIDE 小节之内不开 `####`，再分块用粗体引导句；纯注释改动用字符串感知
-   的去注释行级 diff 证明代码逐字不变。都在「产物约定」。
+   `.gitignore`）是中文——唯一例外是 `README.en.md`，它是 `README.md` 的英文翻译、冲突以中文版
+   为准；注释的「为什么」引用 `docs/GUIDE.md「小节名」` 且照抄完整标题、事实以 GUIDE 已有描述
+   为准；GUIDE 小节之内不开 `####`，再分块用粗体引导句；纯注释改动用字符串感知的去注释行级 diff
+   证明代码逐字不变。都在「产物约定」。
 8. **prose 里不声明支持的 GNOME 版本**——唯一版本声明在 `metadata.json`，加载判定是主版本号
    前缀匹配。**本仓库内容均由 AI 生成**，文档涉及来源时如实说明（「产物约定」）。
 
@@ -52,7 +54,7 @@ GUIDE 按读者的问题组织，四个部分：机制（推导链与全部边�
 ```sh
 make check     # 提交前必跑：node 语法检查 + schema --strict 编译
 make compile   # 改过 *.gschema.xml 后必须执行
-make zip       # 产物含编译后 schema 与 README/GUIDE
+make zip       # 产物含编译后 schema 与 README 中英文/GUIDE
 make install   # 装到 ~/.local/share/gnome-shell/extensions/，extension.js/schema 改动需注销重登
 ```
 

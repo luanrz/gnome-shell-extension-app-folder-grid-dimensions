@@ -7,7 +7,7 @@ SCHEMA := org.gnome.shell.extensions.app-folder-grid-dimensions
 DEST   := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
 JS      := extension.js prefs.js
-DOCS    := README.md docs/GUIDE.md
+DOCS    := README.md README.en.md docs/GUIDE.md
 CONTENT := $(JS) metadata.json $(DOCS)
 SCHEMAS := schemas/$(SCHEMA).gschema.xml schemas/gschemas.compiled
 

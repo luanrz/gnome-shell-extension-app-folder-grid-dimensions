@@ -1,10 +1,10 @@
 /*
  * app-folder-grid-dimensions@luanrz
  *
- * 上游把应用文件夹弹窗钉在 3 行 × 3 列、按每个文件夹自己最长的应用名量格子（同一应用会在
- * 两个文件夹里画出两个尺寸），主题又把 .app-folder-dialog 固定成 720×720。
+ * 上游把应用文件夹网格钉在 3 行 × 3 列、按每个文件夹自己最长的应用名量格子（同一应用会在
+ * 两个文件夹里画出两个尺寸），主题又把应用文件夹弹窗（.app-folder-dialog）固定成 720×720。
  *
- * 设置里只有行数与列数。弹窗尺寸、所有文件夹共用的单元格边长、图标贴图，都由这两个数加
+ * 设置里只有行数与列数。弹窗尺寸、所有文件夹共用的格子边长、图标贴图，都由这两个数加
  * 弹窗落在哪块屏幕推导：computeLayout() 做算术，_layout() 按输入缓存它，设置改动即时生效。
  * 机制与常数出处见 docs/GUIDE.md「机制」。
  *
@@ -89,7 +89,7 @@ const SHARED = {
  * 守卫避免每轮测量重设样式，见 docs/GUIDE.md「开发 · 改 extension.js」。 */
 const LABEL_CAP = '_afgdLabelCap';
 
-/* 带自有标记的才归我们管：应用网格与 dash 共用同一个原型，全靠这个旗子保持原样。
+/* 带自有标记的才归我们管：启动器网格与 dash 共用同一个原型，全靠这个旗子保持原样。
  * 见 docs/GUIDE.md「机制 · 共享格子」。 */
 function isOurs(layoutManager) {
     return layoutManager?._afgdOwned === true;
@@ -115,7 +115,7 @@ function monitorEdges(monitor) {
     return monitor ? [monitor.width, monitor.height] : [0, 0];
 }
 
-/* 一个已经分配过尺寸的弹窗里，整页还放得下的最大 cell；从未分配过则 null（「还不知道」，
+/* 一个已经分配过尺寸的网格里，整页还放得下的最大 cell；从未分配过则 null（「还不知道」，
  * 不参与取最小）。FolderGrid 的页居中、内边距抵消，所以只看页尺寸与间距——
  * 见 docs/GUIDE.md「机制」。 */
 function pageFitSize(layoutManager) {
@@ -131,8 +131,8 @@ function pageFitSize(layoutManager) {
 }
 
 /* 所有文件夹必须共用的 cell，一个全局数；null 表示「把决定权交回 GNOME」
- * （应用网格、dash、任何不归我们管的文件夹）。解析值让每个文件夹在第一次测量之前
- * 就同值；弹窗实测值只作保险，一降就是所有文件夹一起降。
+ * （启动器网格、dash、任何不归我们管的文件夹）。解析值让每个文件夹在第一次测量之前
+ * 就同值；网格实测值只作保险，一降就是所有文件夹一起降。
  * 为什么必须这样，见 docs/GUIDE.md「机制 · 共享格子」。 */
 function ownedCellSize(layoutManager) {
     const extension = SHARED.extension;
@@ -256,7 +256,7 @@ const Patches = {
     },
 
     /* 共享 cell 变了，所有文件夹的贴图都要跟上——排到 idle 去做：这里正跑在
-     * measure pass 里，重建 actor 不安全；而且这是页面几何第一次可用的时刻——
+     * measure pass 里，重建 actor 不安全；而且这是页几何第一次可用的时刻——
      * 设置变更或被别的扩展改过尺寸的弹窗，总要晚一次 allocation。
      * 去重、晚一次 allocation 的因由见 docs/GUIDE.md「开发 · 改 extension.js」。 */
     noteSharedCell(cell) {
@@ -275,7 +275,7 @@ const Patches = {
         });
     },
 
-    /* 第一次 adopt 某个文件夹网格时调用。还原时按 PATCH.maxChildSizeProto 把方法
+    /* 第一次 adopt 某个应用文件夹网格时调用。还原时按 PATCH.maxChildSizeProto 把方法
      * 写回它原来的原型。机制见 docs/GUIDE.md「开发 · 改 extension.js」。 */
     installLate(layoutManager) {
         if (PATCH.maxChildSize)
@@ -293,7 +293,7 @@ const Patches = {
             const cell = ownedCellSize(this);
 
             if (cell === null) {
-                /* 不归我们管（应用网格、dash），或决定权已交回 GNOME——这时它在
+                /* 不归我们管（启动器网格、dash），或决定权已交回 GNOME——这时它在
                  * 我们管期间留下的标签上限必须先清掉。 */
                 if (this[LABEL_CAP] !== undefined)
                     applyLabelCap(this, 0);
@@ -477,7 +477,7 @@ export default class AppFolderGridDimensionsExtension extends Extension {
         layoutManager.columns_per_page = columns;
     }
 
-    /* 接管一个文件夹网格：页几何、标记、贴图、分页。 */
+    /* 接管一个应用文件夹网格：页几何、标记、贴图、分页。 */
     _applyToGrid(grid) {
         const {rows, columns} = this._layout();
 
@@ -567,7 +567,7 @@ export default class AppFolderGridDimensionsExtension extends Extension {
         }
     }
 
-    /* owned 文件夹画的贴图：共享 cell 减去标签开销，再钳在 16..96。条目盒子恒等于
+    /* owned 文件夹画的贴图：共享 cell 减去标签开销，再钳在 16..96。条目盒恒等于
      * 「贴图 + 标签 + 内边距」，格子被屏幕夹小时贴图必须一起缩；开销还没量到时
      * 贴图保持设计尺寸，不猜。
      * 见 docs/GUIDE.md「机制」与「开发 · 改 extension.js」。 */

@@ -4,7 +4,7 @@
           path="/org/gnome/shell/extensions/app-folder-grid-dimensions/">
 
     <!--
-      刻意只留行列数两个设置：弹窗尺寸、图标格子、贴图分辨率都由 extension.js 从
+      刻意只留行列数两个设置：弹窗尺寸、格子边长、贴图分辨率都由 extension.js 从
       这两个数推导（_dialogSize / ownedCellSize / _pinTextureFor），「各文件夹一样大」
       正是这样保证的。机制见 docs/GUIDE.md「机制」。
       summary/description 是给界面用的英文文案，不译（docs/GUIDE.md「开发 · 改 prefs.js」的界面文案）。
